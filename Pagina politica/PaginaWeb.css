@@ -1,0 +1,38 @@
+
+img {
+    background-image: url("https://www.caracteristicas.co/wp-content/uploads/2017/05/bandera-de-mexico-e1567990939713.jpg");
+    z-index: 0;
+    height: auto;
+    width: 100%;
+    position: absolute;
+    opacity: 0.50;
+}
+
+#pv {
+    
+    color: green;
+}
+
+#pri {
+
+}
+
+#pan {
+    color: blue;
+}
+
+#mc {
+    color: orange;
+}
+
+#morena {
+    color: maroon;
+}
+
+#pt {
+    color: red;
+}
+
+#pes {
+    color: purple;
+}
