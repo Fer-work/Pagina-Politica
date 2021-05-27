@@ -1,11 +1,55 @@
+*{
+    border: 1px solid red;
+} 
 
-img {
-    background-image: url("https://www.caracteristicas.co/wp-content/uploads/2017/05/bandera-de-mexico-e1567990939713.jpg");
-    z-index: 0;
-    height: auto;
-    width: 100%;
+/*Esta es la parte del heading que incluye la introducion y la barra de navegacion*/
+header {
+    text-align: center;
+    padding: 10px auto;
+    margin: 10px auto;
+}
+
+h2 {
+    text-align: center;
+    padding: 10px auto;
+    margin: 10px auto;
+}
+
+header p{
+    text-align: center;
+    padding: 50px;
+    margin: 10px;
+}
+
+.partidos {
+    margin: 10px;
+    padding: 10px;
+    display: inline-block;
+    position: relative;
+    top: auto;
+    width: 200px;
+    height: 400px;
+    font-size: 14px;
+    font-weight: bold;
+    background-color: rgb(196, 191, 191);
+}
+
+.partidos h2 {
+    text-align: center;
+    position: relative;
+    top: 10px;
+    height: fit-content;
+    width: fit-content;
+}
+
+button {
+    height: 20px;
+    width: 80px;
+    align-content: center;
+    display: inline-block;
     position: absolute;
-    opacity: 0.50;
+    top: 90%;
+
 }
 
 #pv {
@@ -35,4 +79,13 @@ img {
 
 #pes {
     color: purple;
+}
+
+#prd {
+    color: yellow;
+}
+
+footer {
+    position: relative;
+
 }
