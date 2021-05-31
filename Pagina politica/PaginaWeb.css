@@ -1,12 +1,20 @@
-*{
+/* *{
     border: 1px solid red;
-} 
+}  */
 
 /*Esta es la parte del heading que incluye la introducion y la barra de navegacion*/
 header {
     text-align: center;
     padding: 10px auto;
     margin: 10px auto;
+    
+}
+header ul {
+    display: inline-block;
+}
+
+header ul li {
+    display: inline-block;
 }
 
 h2 {
@@ -21,10 +29,16 @@ header p{
     margin: 10px;
 }
 
+main {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
 .partidos {
     margin: 10px;
     padding: 10px;
-    display: inline-block;
+    display: flex;
+    flex-flow: column;
     position: relative;
     top: auto;
     width: 200px;
@@ -41,7 +55,9 @@ header p{
     height: fit-content;
     width: fit-content;
 }
-
+.partidos p {
+    color: black;
+}
 button {
     height: 20px;
     width: 80px;
