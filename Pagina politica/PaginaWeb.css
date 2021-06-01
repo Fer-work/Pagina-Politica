@@ -14,7 +14,11 @@ header ul {
 }
 
 header ul li {
+    background-color: rgb(238, 189, 98);
     display: inline-block;
+    padding: 10px;
+    margin: 10px;
+    border-radius: 5px;
 }
 
 h2 {
@@ -29,11 +33,17 @@ header p{
     margin: 10px;
 }
 
+body {
+    background-color:antiquewhite;
+}
+
 main {
+    
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
 }
+
 .partidos {
     margin: 10px;
     padding: 10px;
