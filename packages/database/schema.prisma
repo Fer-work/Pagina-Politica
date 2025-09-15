@@ -1,0 +1,501 @@
+// Prisma Schema for PoliticaMex E-Voting System
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Management
+model Citizen {
+  id                    String   @id @default(cuid())
+  curpHash              String   @unique // Hashed CURP for privacy
+  username              String   @unique
+  email                 String   @unique
+  emailVerified         DateTime?
+  biometricHash         String?  // For secure authentication
+  reputationScore       Int      @default(100)
+  verificationLevel     VerificationLevel @default(BASIC)
+  isActive              Boolean  @default(true)
+  joinedAt              DateTime @default(now())
+  lastActiveAt          DateTime @default(now())
+
+  // Relations
+  votes                 Vote[]
+  reputationRatings     ReputationRating[]
+  corruptionReports     CorruptionReport[]
+  reportVerifications   ReportVerification[]
+  civicPosts            CivicPost[]
+  postLikes             PostLike[]
+  comments              Comment[]
+  badges                CitizenBadge[]
+  auditLogs             AuditLog[]
+
+  @@map("citizens")
+}
+
+model Official {
+  id                String   @id @default(cuid())
+  name              String
+  position          String
+  level             GovernmentLevel
+  party             String?
+  municipality      String?
+  state             String?
+  salary            Decimal?
+  startDate         DateTime
+  endDate           DateTime?
+  isActive          Boolean  @default(true)
+  photoUrl          String?
+  biography         String?
+  contactInfo       Json?    // Email, phone, social media
+
+  // Calculated fields
+  avgReputation     Float    @default(2.5)
+  totalRatings      Int      @default(0)
+  transparencyScore Int      @default(50)
+
+  // Relations
+  reputationRatings ReputationRating[]
+  corruptionReports CorruptionReport[]
+  transparencyRecords TransparencyRecord[]
+  electionCandidacies ElectionCandidate[]
+
+  @@map("officials")
+}
+
+model PoliticalParty {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  abbreviation  String   @unique
+  foundedYear   Int
+  ideology      String?
+  logoUrl       String?
+  colorPrimary  String   // Hex color
+  colorSecondary String?
+  description   String?
+  website       String?
+
+  // Relations
+  proposals     PartyProposal[]
+  candidates    ElectionCandidate[]
+
+  @@map("political_parties")
+}
+
+// Elections System
+model Election {
+  id          String   @id @default(cuid())
+  name        String
+  type        ElectionType
+  level       GovernmentLevel
+  location    String?  // State/Municipality
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(false)
+  description String?
+
+  // Blockchain integration
+  contractAddress String?
+  blockchainTxHash String?
+
+  // Relations
+  candidates  ElectionCandidate[]
+  votes       Vote[]
+
+  @@map("elections")
+}
+
+model ElectionCandidate {
+  id         String   @id @default(cuid())
+  electionId String
+  officialId String?  // May be null for new candidates
+  partyId    String?
+  name       String
+  position   String
+  platform   String?
+  photoUrl   String?
+  voteCount  Int      @default(0)
+
+  // Relations
+  election   Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  official   Official? @relation(fields: [officialId], references: [id])
+  party      PoliticalParty? @relation(fields: [partyId], references: [id])
+  votes      Vote[]
+
+  @@map("election_candidates")
+}
+
+model Vote {
+  id            String   @id @default(cuid())
+  electionId    String
+  candidateId   String
+  citizenId     String
+  timestamp     DateTime @default(now())
+
+  // Blockchain verification
+  blockchainTxHash String?
+  zkProofHash      String? // Zero-knowledge proof
+  isVerified       Boolean @default(false)
+
+  // Relations
+  election  Election @relation(fields: [electionId], references: [id])
+  candidate ElectionCandidate @relation(fields: [candidateId], references: [id])
+  citizen   Citizen @relation(fields: [citizenId], references: [id])
+
+  @@unique([electionId, citizenId]) // One vote per citizen per election
+  @@map("votes")
+}
+
+// Reputation System
+model ReputationRating {
+  id         String   @id @default(cuid())
+  officialId String
+  citizenId  String
+  rating     Int      // 1-5 scale
+  category   RatingCategory
+  comment    String?
+  evidence   String?  // IPFS hash or URL
+  timestamp  DateTime @default(now())
+  weight     Float    @default(1.0) // Based on citizen reputation
+
+  // Relations
+  official   Official @relation(fields: [officialId], references: [id])
+  citizen    Citizen @relation(fields: [citizenId], references: [id])
+
+  @@unique([officialId, citizenId, category]) // One rating per category per citizen
+  @@map("reputation_ratings")
+}
+
+// Corruption Reporting
+model CorruptionReport {
+  id                String   @id @default(cuid())
+  officialId        String
+  reporterId        String
+  title             String
+  description       String
+  category          CorruptionCategory
+  severity          ReportSeverity
+  status            ReportStatus @default(PENDING)
+  evidenceFiles     Json?    // Array of file hashes/URLs
+  location          String?
+  estimatedAmount   Decimal?
+  dateOfIncident    DateTime?
+  submittedAt       DateTime @default(now())
+  resolvedAt        DateTime?
+
+  // Community verification
+  communityScore    Float    @default(0)
+  verificationCount Int      @default(0)
+  requiredVerifications Int  @default(3)
+
+  // Blockchain
+  blockchainTxHash  String?
+  ipfsHash          String?
+
+  // Relations
+  official          Official @relation(fields: [officialId], references: [id])
+  reporter          Citizen @relation(fields: [reporterId], references: [id])
+  verifications     ReportVerification[]
+  updates           ReportUpdate[]
+
+  @@map("corruption_reports")
+}
+
+model ReportVerification {
+  id        String   @id @default(cuid())
+  reportId  String
+  citizenId String
+  isValid   Boolean
+  comment   String?
+  timestamp DateTime @default(now())
+  weight    Float    @default(1.0)
+
+  // Relations
+  report    CorruptionReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  citizen   Citizen @relation(fields: [citizenId], references: [id])
+
+  @@unique([reportId, citizenId])
+  @@map("report_verifications")
+}
+
+model ReportUpdate {
+  id          String   @id @default(cuid())
+  reportId    String
+  status      ReportStatus
+  comment     String?
+  updatedBy   String?  // Admin/official ID
+  timestamp   DateTime @default(now())
+
+  // Relations
+  report      CorruptionReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("report_updates")
+}
+
+// Social Network Features
+model CivicPost {
+  id           String   @id @default(cuid())
+  authorId     String
+  content      String
+  type         PostType @default(DISCUSSION)
+  relatedOfficialId String?
+  attachments  Json?    // File URLs/hashes
+  tags         String[]
+  location     String?
+  isPublic     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Engagement metrics
+  likesCount   Int      @default(0)
+  commentsCount Int     @default(0)
+  sharesCount  Int      @default(0)
+
+  // Relations
+  author       Citizen @relation(fields: [authorId], references: [id])
+  likes        PostLike[]
+  comments     Comment[]
+
+  @@map("civic_posts")
+}
+
+model PostLike {
+  id       String   @id @default(cuid())
+  postId   String
+  citizenId String
+  timestamp DateTime @default(now())
+
+  // Relations
+  post     CivicPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  citizen  Citizen @relation(fields: [citizenId], references: [id])
+
+  @@unique([postId, citizenId])
+  @@map("post_likes")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  content   String
+  parentId  String?  // For threaded comments
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  post      CivicPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    Citizen @relation(fields: [authorId], references: [id])
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+// Transparency Records
+model TransparencyRecord {
+  id           String   @id @default(cuid())
+  officialId   String
+  type         TransparencyType
+  title        String
+  description  String?
+  amount       Decimal?
+  currency     String   @default("MXN")
+  period       String   // "2024-Q1", "2024-01", etc
+  documentUrl  String?
+  isPublic     Boolean  @default(true)
+  submittedAt  DateTime @default(now())
+  verifiedAt   DateTime?
+
+  // Relations
+  official     Official @relation(fields: [officialId], references: [id])
+
+  @@map("transparency_records")
+}
+
+// Gamification System
+model Badge {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  iconUrl     String?
+  category    BadgeCategory
+  rarity      BadgeRarity @default(COMMON)
+  points      Int      @default(0)
+  requirements Json    // Flexible requirements structure
+
+  // Relations
+  citizenBadges CitizenBadge[]
+
+  @@map("badges")
+}
+
+model CitizenBadge {
+  id        String   @id @default(cuid())
+  citizenId String
+  badgeId   String
+  earnedAt  DateTime @default(now())
+
+  // Relations
+  citizen   Citizen @relation(fields: [citizenId], references: [id])
+  badge     Badge @relation(fields: [badgeId], references: [id])
+
+  @@unique([citizenId, badgeId])
+  @@map("citizen_badges")
+}
+
+model PartyProposal {
+  id          String   @id @default(cuid())
+  partyId     String
+  title       String
+  category    ProposalCategory
+  description String
+  details     String?
+  status      ProposalStatus @default(ACTIVE)
+  priority    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  party       PoliticalParty @relation(fields: [partyId], references: [id])
+
+  @@map("party_proposals")
+}
+
+// Audit and Security
+model AuditLog {
+  id        String   @id @default(cuid())
+  citizenId String?
+  action    String
+  resource  String
+  resourceId String?
+  oldValue  Json?
+  newValue  Json?
+  ipAddress String?
+  userAgent String?
+  timestamp DateTime @default(now())
+
+  // Relations
+  citizen   Citizen? @relation(fields: [citizenId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// Enums
+enum VerificationLevel {
+  BASIC
+  VERIFIED
+  TRUSTED
+  GUARDIAN
+}
+
+enum GovernmentLevel {
+  MUNICIPAL
+  STATE
+  FEDERAL
+}
+
+enum ElectionType {
+  PRESIDENTIAL
+  GUBERNATORIAL
+  MUNICIPAL
+  CONGRESSIONAL
+  SENATE
+  LOCAL_CONGRESS
+  REFERENDUM
+}
+
+enum RatingCategory {
+  TRANSPARENCY
+  EFFECTIVENESS
+  INTEGRITY
+  COMMUNICATION
+  RESPONSIVENESS
+  OVERALL
+}
+
+enum CorruptionCategory {
+  FINANCIAL_MISCONDUCT
+  ABUSE_OF_POWER
+  CONFLICT_OF_INTEREST
+  EMBEZZLEMENT
+  BRIBERY
+  NEPOTISM
+  MISUSE_OF_RESOURCES
+  OTHER
+}
+
+enum ReportSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ReportStatus {
+  PENDING
+  INVESTIGATING
+  VERIFIED
+  DISMISSED
+  RESOLVED
+  ESCALATED
+}
+
+enum PostType {
+  DISCUSSION
+  REPORT
+  UPDATE
+  PETITION
+  ANNOUNCEMENT
+  QUESTION
+}
+
+enum TransparencyType {
+  SALARY
+  EXPENSES
+  TRAVEL
+  MEETINGS
+  CONTRACTS
+  ASSETS
+  DONATIONS
+  OTHER
+}
+
+enum BadgeCategory {
+  VOTING
+  TRANSPARENCY
+  COMMUNITY
+  VERIFICATION
+  ENGAGEMENT
+  SPECIAL
+}
+
+enum BadgeRarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+}
+
+enum ProposalCategory {
+  ECONOMY
+  EDUCATION
+  HEALTH
+  SECURITY
+  ENVIRONMENT
+  INFRASTRUCTURE
+  SOCIAL
+  TECHNOLOGY
+  JUSTICE
+  OTHER
+}
+
+enum ProposalStatus {
+  DRAFT
+  ACTIVE
+  IMPLEMENTED
+  REJECTED
+  UNDER_REVIEW
+}
